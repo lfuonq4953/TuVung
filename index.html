@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Từ Vựng Tiếng Anh</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-animation">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+
+    <div id="app">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">📚</div>
+                <h1>Học Từ Vựng</h1>
+            </div>
+            <p class="subtitle">Phương pháp học hiệu quả với Flashcard</p>
+        </header>
+
+        <div class="container">
+            <!-- Upload Section -->
+            <div id="uploadSection" class="glass-card upload-section">
+                <div class="section-header">
+                    <h2>✨ Tạo Bộ Từ Mới</h2>
+                    <p class="section-subtitle">Upload file Excel và audio để bắt đầu</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="input-label">
+                        <span class="label-icon">📝</span>
+                        Tên bộ từ
+                    </label>
+                    <input type="text" id="setName" class="modern-input" placeholder="Ví dụ: TOEIC 600, IELTS Vocabulary...">
+                </div>
+
+                <div class="upload-grid">
+                    <div class="upload-box">
+                        <input type="file" id="excelFile" accept=".xlsx,.xls" hidden>
+                        <label for="excelFile" class="upload-label">
+                            <div class="upload-icon">📄</div>
+                            <span class="upload-title">File Excel</span>
+                            <span id="excelFileName" class="upload-filename">Chọn file Excel</span>
+                            <span class="upload-hint">Cột 1: STT | Cột 2: Từ vựng | Cột 3: Từ loại | Cột 4: Phiên âm | Cột 5: Nghĩa</span>
+                        </label>
+                    </div>
+                    
+                    <div class="upload-box">
+                        <input type="file" id="audioFiles" accept=".wav,.mp3" multiple hidden>
+                        <label for="audioFiles" class="upload-label">
+                            <div class="upload-icon">🎵</div>
+                            <span class="upload-title">File Audio</span>
+                            <span id="audioFileName" class="upload-filename">Chọn file audio</span>
+                            <span class="upload-hint">Format: tu_001.wav, tu_002.wav...</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button id="createSetBtn" class="btn btn-primary">
+                    <span class="btn-icon">🚀</span>
+                    Tạo Bộ Từ Ngay
+                </button>
+            </div>
+
+            <!-- Vocab Sets List -->
+            <div id="vocabSetsList" class="glass-card" style="display: none;">
+                <div class="sets-header">
+                    <h2>📖 Bộ Từ Của Bạn</h2>
+                    <button id="addNewSetBtn" class="btn btn-secondary">
+                        <span>➕</span> Thêm Bộ Mới
+                    </button>
+                </div>
+                <div id="setsContainer" class="sets-grid"></div>
+            </div>
+
+            <!-- Learning Section -->
+            <div id="learningSection" class="learning-section" style="display: none;">
+                <div class="flashcard-container">
+                    <div class="flashcard" id="flashcard">
+                        <div class="flashcard-inner">
+                            <div class="flashcard-front">
+                                <h2 id="wordEnglish" class="word-english"></h2>                                
+                                <p id="wordPosFront" class="word-pos"></p>
+                                <p id="wordPronFront" class="word-pron"></p>
+                                <p class="tap-hint">👆 Nhấn để xem nghĩa</p>
+                            </div>
+                            <div class="flashcard-back">
+                                <h2 id="wordEnglishBack" class="word-english-small"></h2>
+
+                                <!-- thêm vào đây -->
+                                <p id="wordPos" class="word-pos"></p>
+                                <p id="wordPronunciation" class="word-pronunciation"></p>
+                                <!-- hết phần thêm -->
+
+                                <p id="wordVietnamese" class="word-vietnamese"></p>
+
+                                <div id="exampleContainer" class="example-container">
+                                    <div class="example-icon">💬</div>
+                                    <p id="wordExample" class="word-example"></p>
+                                </div>
+                            </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls glass-card">
+                    <button id="prevBtn" class="control-btn">
+                        <span class="control-icon">◀</span>
+                        <span class="control-text">Trước</span>
+                    </button>
+                    
+                    <div class="controls-center">
+                        <div class="progress-info">
+                            <span id="progress" class="progress-text">0 / 0</span>
+                        </div>
+                        <button id="playAudioBtn" class="btn-audio">
+                            <span class="audio-icon">🔊</span>
+                            <span class="audio-text">Phát Âm</span>
+                        </button>
+                    </div>
+                    
+                    <button id="nextBtn" class="control-btn">
+                        <span class="control-text">Sau</span>
+                        <span class="control-icon">▶</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="glass-card empty-state">
+                <div class="empty-icon">📚</div>
+                <h3 class="empty-title">Chưa Có Bộ Từ Nào</h3>
+                <p class="empty-text">Hãy tạo bộ từ đầu tiên của bạn để bắt đầu hành trình học tiếng Anh</p>
+                <button id="startBtn" class="btn btn-primary">
+                    <span class="btn-icon">✨</span>
+                    Bắt Đầu Ngay
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
