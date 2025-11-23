@@ -426,6 +426,102 @@
         
         .hidden { display: none !important; }
         
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 450px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-header h3 {
+            font-size: 1.2rem;
+            color: #333;
+        }
+        
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .btn-close:hover { color: #333; }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .current-config {
+            background: #e3f2fd;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .config-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-btn:hover { border-color: #667eea; }
+        
+        .tab-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            color: #667eea;
+        }
+        
+        .tab-content { animation: fadeIn 0.3s ease; }
+        
+        .danger-zone {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
         .toast {
             position: fixed;
             bottom: 20px;
@@ -459,9 +555,10 @@
         <div class="header">
             <h1>📚 Học Từ Vựng</h1>
             <p>Flashcard thông minh - Đồng bộ mọi thiết bị</p>
-            <div id="storage-status" class="storage-badge disconnected">
+            <div id="storage-status" class="storage-badge disconnected" onclick="showConfigModal()" style="cursor: pointer;" title="Click để thay đổi cấu hình">
                 <span class="dot disconnected"></span>
                 <span>Đang kết nối...</span>
+                <span style="margin-left: 4px;">⚙️</span>
             </div>
         </div>
 
@@ -585,6 +682,65 @@
 
     <div id="toast" class="toast hidden"></div>
 
+    <!-- Config Modal -->
+    <div id="config-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Cấu hình lưu trữ</h3>
+                <button class="btn-close" onclick="hideConfigModal()">✕</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="current-config" id="current-config-info">
+                    <strong>Đang sử dụng:</strong> <span id="current-storage-type">Chưa cấu hình</span>
+                </div>
+                
+                <div class="config-tabs">
+                    <button class="tab-btn active" onclick="switchTab('firebase')">☁️ Firebase</button>
+                    <button class="tab-btn" onclick="switchTab('local')">💾 Local Storage</button>
+                </div>
+                
+                <div id="tab-firebase" class="tab-content">
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 16px;">
+                        Lưu trữ trên cloud, đồng bộ mọi thiết bị.
+                        <a href="https://console.firebase.google.com/" target="_blank" style="color: #667eea;">Tạo Firebase tại đây</a>
+                    </p>
+                    <div class="config-input">
+                        <label>API Key</label>
+                        <input type="text" id="modal-apiKey" class="input-field" placeholder="AIzaSy..." style="margin-bottom: 12px;">
+                    </div>
+                    <div class="config-input">
+                        <label>Project ID</label>
+                        <input type="text" id="modal-projectId" class="input-field" placeholder="my-vocab-app" style="margin-bottom: 12px;">
+                    </div>
+                    <div class="config-input">
+                        <label>Database URL</label>
+                        <input type="text" id="modal-databaseURL" class="input-field" placeholder="https://xxx.firebaseio.com" style="margin-bottom: 0;">
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 16px;" onclick="connectFirebase()">
+                        🔗 Kết nối Firebase
+                    </button>
+                </div>
+                
+                <div id="tab-local" class="tab-content hidden">
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 16px;">
+                        Lưu trữ trên thiết bị này. Dữ liệu sẽ mất nếu xóa cache trình duyệt.
+                    </p>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="switchToLocal()">
+                        💾 Sử dụng Local Storage
+                    </button>
+                </div>
+                
+                <div class="danger-zone">
+                    <strong style="color: #d32f2f;">⚠️ Vùng nguy hiểm</strong>
+                    <button class="btn btn-danger" style="width: 100%; margin-top: 12px;" onclick="resetAllConfig()">
+                        🗑️ Xóa cấu hình & Đặt lại
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==================== GLOBAL STATE ====================
         let db = null;
@@ -641,6 +797,132 @@
             document.getElementById('config-section').classList.add('hidden');
             updateStorageStatus('connected', '💾 Local Storage - Chỉ thiết bị này');
             loadVocabSets();
+        }
+
+        // ==================== MODAL FUNCTIONS ====================
+        function showConfigModal() {
+            const modal = document.getElementById('config-modal');
+            modal.classList.remove('hidden');
+            
+            // Load current config into form
+            const savedConfig = localStorage.getItem('firebaseConfig');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    document.getElementById('modal-apiKey').value = config.apiKey || '';
+                    document.getElementById('modal-projectId').value = config.projectId || '';
+                    document.getElementById('modal-databaseURL').value = config.databaseURL || '';
+                } catch (e) {}
+            }
+            
+            // Update current storage type display
+            const storageMode = localStorage.getItem('storageMode');
+            const typeSpan = document.getElementById('current-storage-type');
+            if (useFirebase) {
+                typeSpan.textContent = '☁️ Firebase Cloud';
+                typeSpan.style.color = '#4CAF50';
+            } else if (storageMode === 'local') {
+                typeSpan.textContent = '💾 Local Storage';
+                typeSpan.style.color = '#2196F3';
+            } else {
+                typeSpan.textContent = '⚠️ Chưa cấu hình';
+                typeSpan.style.color = '#ff9800';
+            }
+        }
+        
+        function hideConfigModal() {
+            document.getElementById('config-modal').classList.add('hidden');
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+            
+            if (tab === 'firebase') {
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('tab-firebase').classList.remove('hidden');
+            } else {
+                document.querySelector('.tab-btn:last-child').classList.add('active');
+                document.getElementById('tab-local').classList.remove('hidden');
+            }
+        }
+        
+        function connectFirebase() {
+            const config = {
+                apiKey: document.getElementById('modal-apiKey').value.trim(),
+                projectId: document.getElementById('modal-projectId').value.trim(),
+                databaseURL: document.getElementById('modal-databaseURL').value.trim()
+            };
+
+            if (!config.apiKey || !config.projectId || !config.databaseURL) {
+                showToast('Vui lòng điền đầy đủ thông tin!', 'error');
+                return;
+            }
+
+            // Delete old Firebase app if exists
+            if (firebase.apps.length) {
+                firebase.apps.forEach(app => app.delete());
+            }
+
+            if (initFirebase(config)) {
+                localStorage.setItem('firebaseConfig', JSON.stringify(config));
+                localStorage.removeItem('storageMode');
+                hideConfigModal();
+                document.getElementById('config-section').classList.add('hidden');
+                loadVocabSets();
+                showToast('Kết nối Firebase thành công!', 'success');
+            } else {
+                showToast('Lỗi kết nối Firebase! Kiểm tra lại thông tin.', 'error');
+            }
+        }
+        
+        function switchToLocal() {
+            useFirebase = false;
+            db = null;
+            localStorage.setItem('storageMode', 'local');
+            localStorage.removeItem('firebaseConfig');
+            
+            // Delete Firebase app if exists
+            if (firebase.apps.length) {
+                firebase.apps.forEach(app => app.delete());
+            }
+            
+            hideConfigModal();
+            document.getElementById('config-section').classList.add('hidden');
+            updateStorageStatus('connected', '💾 Local Storage - Chỉ thiết bị này');
+            loadVocabSets();
+            showToast('Đã chuyển sang Local Storage!', 'success');
+        }
+        
+        function resetAllConfig() {
+            if (!confirm('Bạn có chắc muốn xóa tất cả cấu hình?\n\nLưu ý: Dữ liệu trên Firebase sẽ KHÔNG bị xóa, chỉ xóa cấu hình kết nối trên thiết bị này.')) {
+                return;
+            }
+            
+            // Clear all local config
+            localStorage.removeItem('firebaseConfig');
+            localStorage.removeItem('storageMode');
+            
+            // Delete Firebase app
+            if (firebase.apps.length) {
+                firebase.apps.forEach(app => app.delete());
+            }
+            
+            useFirebase = false;
+            db = null;
+            vocabSets = [];
+            activeSetId = null;
+            
+            hideConfigModal();
+            
+            // Show config section again
+            document.getElementById('config-section').classList.remove('hidden');
+            document.getElementById('sets-section').classList.add('hidden');
+            document.getElementById('flashcard-section').classList.add('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            
+            updateStorageStatus('disconnected', '⚙️ Cần cấu hình');
+            showToast('Đã xóa cấu hình!', 'success');
         }
 
         // ==================== STORAGE FUNCTIONS ====================
