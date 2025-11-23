@@ -1289,9 +1289,13 @@
 
         // ==================== INITIALIZATION ====================
         window.onload = function() {
+            // Ẩn loading ngay lập tức
+            document.getElementById('loading').classList.add('hidden');
+            
             const savedConfig = localStorage.getItem('firebaseConfig');
             const storageMode = localStorage.getItem('storageMode');
             
+            // Nếu đã có cấu hình Firebase
             if (savedConfig) {
                 try {
                     const config = JSON.parse(savedConfig);
@@ -1304,6 +1308,7 @@
                 }
             }
             
+            // Nếu đã chọn Local Storage
             if (storageMode === 'local') {
                 useFirebase = false;
                 updateStorageStatus('connected', '💾 Local Storage - Chỉ thiết bị này');
@@ -1311,10 +1316,9 @@
                 return;
             }
             
-            // Show config section
-            document.getElementById('loading').classList.add('hidden');
+            // Chưa cấu hình gì -> Hiện form cấu hình
             document.getElementById('config-section').classList.remove('hidden');
-            updateStorageStatus('disconnected', '⚙️ Cần cấu hình Firebase');
+            updateStorageStatus('disconnected', '⚙️ Cần cấu hình');
         };
     </script>
 </body>
