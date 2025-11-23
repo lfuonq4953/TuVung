@@ -753,6 +753,17 @@
         let useFirebase = false;
         let audioElement = new Audio();
 
+        // ==================== FIREBASE CONFIG - ĐIỀN THÔNG TIN CỦA BẠN ====================
+        // Sau khi tạo Firebase project, điền thông tin vào đây:
+        const DEFAULT_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDAefam7W1_LJC6Fb8EwdlunuCJBEOJgGQ",              // Thay bằng API Key của bạn
+            projectId: "my-vocab-app2",        // Thay bằng Project ID của bạn
+            databaseURL: "https://my-vocab-app2-default-rtdb.asia-southeast1.firebasedatabase.app"     // Thay bằng Database URL của bạn
+        };
+        
+        // Set true để tự động dùng Firebase (nếu đã điền config ở trên)
+        const AUTO_USE_FIREBASE = true; // Đổi thành true khi đã điền config
+
         // ==================== FIREBASE SETUP ====================
         function initFirebase(config) {
             try {
@@ -1292,10 +1303,22 @@
             // Ẩn loading ngay lập tức
             document.getElementById('loading').classList.add('hidden');
             
+            // Kiểm tra xem có AUTO_USE_FIREBASE không
+            if (AUTO_USE_FIREBASE && DEFAULT_FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY_HERE") {
+                console.log('Auto connecting to Firebase...');
+                if (initFirebase(DEFAULT_FIREBASE_CONFIG)) {
+                    localStorage.setItem('firebaseConfig', JSON.stringify(DEFAULT_FIREBASE_CONFIG));
+                    loadVocabSets();
+                    return;
+                } else {
+                    showToast('Lỗi kết nối Firebase! Kiểm tra lại config.', 'error');
+                }
+            }
+            
             const savedConfig = localStorage.getItem('firebaseConfig');
             const storageMode = localStorage.getItem('storageMode');
             
-            // Nếu đã có cấu hình Firebase
+            // Nếu đã có cấu hình Firebase trong localStorage
             if (savedConfig) {
                 try {
                     const config = JSON.parse(savedConfig);
