@@ -67,6 +67,78 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // Storage Adapter - works with both cloud storage and localStorage
+        const StorageAdapter = {
+            isCloudAvailable: typeof window.storage !== 'undefined',
+            
+            async list(prefix, shared = false) {
+                if (this.isCloudAvailable) {
+                    try {
+                        return await window.storage.list(prefix, shared);
+                    } catch (error) {
+                        console.log('Cloud storage not available, using localStorage');
+                        this.isCloudAvailable = false;
+                    }
+                }
+                
+                // Fallback to localStorage
+                const keys = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.startsWith(prefix)) {
+                        keys.push(key);
+                    }
+                }
+                return { keys };
+            },
+            
+            async get(key, shared = false) {
+                if (this.isCloudAvailable) {
+                    try {
+                        return await window.storage.get(key, shared);
+                    } catch (error) {
+                        this.isCloudAvailable = false;
+                    }
+                }
+                
+                // Fallback to localStorage
+                const value = localStorage.getItem(key);
+                return value ? { key, value } : null;
+            },
+            
+            async set(key, value, shared = false) {
+                if (this.isCloudAvailable) {
+                    try {
+                        return await window.storage.set(key, value, shared);
+                    } catch (error) {
+                        this.isCloudAvailable = false;
+                    }
+                }
+                
+                // Fallback to localStorage
+                localStorage.setItem(key, value);
+                return { key, value };
+            },
+            
+            async delete(key, shared = false) {
+                if (this.isCloudAvailable) {
+                    try {
+                        return await window.storage.delete(key, shared);
+                    } catch (error) {
+                        this.isCloudAvailable = false;
+                    }
+                }
+                
+                // Fallback to localStorage
+                localStorage.removeItem(key);
+                return { key, deleted: true };
+            },
+            
+            getStorageType() {
+                return this.isCloudAvailable ? 'Cloud Storage' : 'Local Storage';
+            }
+        };
+
         // Lucide Icons as SVG components
         const BookOpen = ({ className }) => (
             <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,6 +196,7 @@
             const [showUpload, setShowUpload] = useState(false);
             const [loading, setLoading] = useState(true);
             const [syncing, setSyncing] = useState(false);
+            const [storageType, setStorageType] = useState('');
             
             const [setName, setSetName] = useState('');
             const [excelFile, setExcelFile] = useState(null);
@@ -132,18 +205,19 @@
             const audioRef = useRef(new Audio());
 
             useEffect(() => {
-                loadFromCloud();
+                loadFromStorage();
+                setStorageType(StorageAdapter.getStorageType());
             }, []);
 
-            const loadFromCloud = async () => {
+            const loadFromStorage = async () => {
                 setLoading(true);
                 try {
-                    const result = await window.storage.list('vocabset:', true);
+                    const result = await StorageAdapter.list('vocabset:', true);
                     if (result && result.keys) {
                         const sets = [];
                         for (const key of result.keys) {
                             try {
-                                const data = await window.storage.get(key, true);
+                                const data = await StorageAdapter.get(key, true);
                                 if (data && data.value) {
                                     const set = JSON.parse(data.value);
                                     sets.push(set);
@@ -155,25 +229,25 @@
                         setVocabSets(sets.sort((a, b) => b.id - a.id));
                     }
                 } catch (error) {
-                    console.log('Loading from cloud...');
+                    console.log('Loading from storage...');
                 }
                 setLoading(false);
             };
 
-            const saveSetToCloud = async (set) => {
+            const saveSetToStorage = async (set) => {
                 setSyncing(true);
                 try {
-                    await window.storage.set(`vocabset:${set.id}`, JSON.stringify(set), true);
+                    await StorageAdapter.set(`vocabset:${set.id}`, JSON.stringify(set), true);
                 } catch (error) {
-                    alert('Lỗi khi lưu lên cloud: ' + error.message);
+                    alert('Lỗi khi lưu: ' + error.message);
                 }
                 setSyncing(false);
             };
 
-            const deleteSetFromCloud = async (setId) => {
+            const deleteSetFromStorage = async (setId) => {
                 setSyncing(true);
                 try {
-                    await window.storage.delete(`vocabset:${setId}`, true);
+                    await StorageAdapter.delete(`vocabset:${setId}`, true);
                 } catch (error) {
                     console.error('Error deleting:', error);
                 }
@@ -244,7 +318,7 @@
                             createdAt: new Date().toISOString()
                         };
 
-                        await saveSetToCloud(newSet);
+                        await saveSetToStorage(newSet);
                         setVocabSets(prev => [newSet, ...prev]);
                         setActiveSetId(newSet.id);
                         setCurrentIndex(0);
@@ -262,7 +336,7 @@
 
             const deleteSet = async (setId) => {
                 if (confirm('Bạn có chắc muốn xóa bộ từ này?')) {
-                    await deleteSetFromCloud(setId);
+                    await deleteSetFromStorage(setId);
                     setVocabSets(prev => prev.filter(s => s.id !== setId));
                     if (activeSetId === setId) {
                         setActiveSetId(null);
@@ -311,7 +385,7 @@
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 flex items-center justify-center">
                         <div className="text-white text-2xl font-semibold animate-pulse">
-                            Đang tải dữ liệu từ cloud...
+                            Đang tải dữ liệu...
                         </div>
                     </div>
                 );
@@ -325,12 +399,17 @@
                             <BookOpen className="w-12 h-12 animate-bounce" />
                             <h1 className="text-5xl font-bold">Học Từ Vựng</h1>
                         </div>
-                        <p className="text-xl opacity-95">Phương pháp học hiệu quả với Flashcard - Đồng bộ mọi thiết bị</p>
-                        {syncing && (
-                            <div className="mt-2 text-sm bg-white/20 inline-block px-4 py-1 rounded-full">
-                                ☁️ Đang đồng bộ...
-                            </div>
-                        )}
+                        <p className="text-xl opacity-95">Phương pháp học hiệu quả với Flashcard</p>
+                        <div className="mt-3 text-sm">
+                            {syncing && (
+                                <span className="bg-white/20 inline-block px-4 py-1 rounded-full mr-2">
+                                    💾 Đang lưu...
+                                </span>
+                            )}
+                            <span className="bg-white/20 inline-block px-4 py-1 rounded-full">
+                                {storageType === 'Cloud Storage' ? '☁️ Cloud Storage (Đồng bộ mọi thiết bị)' : '💾 Local Storage (Chỉ thiết bị này)'}
+                            </span>
+                        </div>
                     </div>
 
                     <div className="max-w-6xl mx-auto">
@@ -446,7 +525,6 @@
                                                 </button>
                                             </div>
                                             <p className="text-gray-600">{set.words.length} từ vựng</p>
-                                            <p className="text-xs text-gray-400 mt-1">☁️ Đồng bộ cloud</p>
                                         </div>
                                     ))}
                                 </div>
@@ -528,8 +606,7 @@
                                 <BookOpen className="w-24 h-24 mx-auto mb-6 text-purple-600 animate-bounce" />
                                 <h3 className="text-3xl font-bold text-gray-800 mb-4">Chưa Có Bộ Từ Nào</h3>
                                 <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
-                                    Hãy tạo bộ từ đầu tiên của bạn để bắt đầu hành trình học tiếng Anh. 
-                                    Dữ liệu sẽ được lưu trên cloud và đồng bộ trên mọi thiết bị!
+                                    Hãy tạo bộ từ đầu tiên của bạn để bắt đầu hành trình học tiếng Anh!
                                 </p>
                                 <button
                                     onClick={() => setShowUpload(true)}
