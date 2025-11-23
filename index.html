@@ -3,626 +3,1037 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Học Từ Vựng - Cloud Storage</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <title>Học Từ Vựng - Cloud Sync</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
         
-        * {
-            font-family: 'Poppins', sans-serif;
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #6B8DD6 100%);
+            padding: 20px;
         }
         
-        @keyframes fade-in {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease;
         }
         
-        @keyframes slide-up {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        .animate-fade-in {
-            animation: fade-in 0.8s ease;
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        .animate-slide-up {
-            animation: slide-up 0.6s ease;
+        .header h1 { font-size: 2.2rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { opacity: 0.9; font-size: 1rem; }
+        
+        .storage-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 12px;
         }
         
-        .perspective-1000 {
+        .storage-badge.connected { background: rgba(76, 175, 80, 0.3); }
+        .storage-badge.disconnected { background: rgba(244, 67, 54, 0.3); }
+        .storage-badge.syncing { background: rgba(255, 193, 7, 0.3); }
+        
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+        
+        .dot.disconnected { background: #f44336; }
+        .dot.syncing { background: #FFC107; animation: pulse 1s infinite; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 24px;
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            animation: slideUp 0.5s ease;
+        }
+        
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover { background: #e0e0e0; }
+        
+        .btn-danger {
+            background: #ff5252;
+            color: white;
+            padding: 8px 12px;
+        }
+        
+        .btn-danger:hover { background: #ff1744; }
+        
+        .btn-audio {
+            background: linear-gradient(135deg, #00b4db, #0083b0);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin-bottom: 16px;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        
+        .upload-zone {
+            border: 3px dashed #d0d0d0;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 16px;
+        }
+        
+        .upload-zone:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .upload-zone.has-file {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        @media (max-width: 600px) {
+            .upload-grid { grid-template-columns: 1fr; }
+        }
+        
+        .vocab-sets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        
+        .vocab-set-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .vocab-set-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .vocab-set-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+        
+        .vocab-set-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+        }
+        
+        .vocab-set-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        
+        .vocab-set-count {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        /* Flashcard */
+        .flashcard-container {
             perspective: 1000px;
+            margin-bottom: 24px;
         }
         
-        .transform-style-3d {
+        .flashcard {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            cursor: pointer;
             transform-style: preserve-3d;
+            transition: transform 0.6s ease;
         }
         
-        .backface-hidden {
+        .flashcard.flipped { transform: rotateY(180deg); }
+        
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
             backface-visibility: hidden;
+            text-align: center;
         }
         
-        .rotate-y-180 {
+        .flashcard-front {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .flashcard-back {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
             transform: rotateY(180deg);
         }
         
-        .transition-transform {
-            transition: transform 0.5s;
+        .word-english {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .word-pos {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .word-pronunciation {
+            font-size: 1.1rem;
+            font-style: italic;
+            opacity: 0.85;
+        }
+        
+        .word-vietnamese {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+        
+        .flip-hint {
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        
+        .controls-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .progress-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .empty-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+        
+        .empty-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .empty-desc {
+            color: #666;
+            margin-bottom: 24px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #6B8DD6 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .config-section {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .config-title {
+            font-weight: 700;
+            color: #856404;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .config-grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .config-input {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .config-input label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .hidden { display: none !important; }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 500;
+            z-index: 1001;
+            animation: toastIn 0.3s ease;
+        }
+        
+        .toast.success { background: #4CAF50; }
+        .toast.error { background: #f44336; }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <div style="font-size: 1.3rem; font-weight: 600;">Đang kết nối...</div>
+    </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <div class="container">
+        <div class="header">
+            <h1>📚 Học Từ Vựng</h1>
+            <p>Flashcard thông minh - Đồng bộ mọi thiết bị</p>
+            <div id="storage-status" class="storage-badge disconnected">
+                <span class="dot disconnected"></span>
+                <span>Đang kết nối...</span>
+            </div>
+        </div>
 
-        // Storage Adapter - works with both cloud storage and localStorage
-        const StorageAdapter = {
-            isCloudAvailable: typeof window.storage !== 'undefined',
+        <!-- Firebase Config Section -->
+        <div id="config-section" class="card config-section hidden">
+            <div class="config-title">
+                ⚙️ Cấu hình Firebase (Chỉ cần làm 1 lần)
+            </div>
+            <p style="color: #666; margin-bottom: 16px; font-size: 0.9rem;">
+                Để lưu trữ dữ liệu vĩnh viễn trên cloud, bạn cần tạo project Firebase miễn phí.
+                <a href="https://console.firebase.google.com/" target="_blank" style="color: #667eea;">Tạo tại đây</a>
+            </p>
+            <div class="config-grid">
+                <div class="config-input">
+                    <label>API Key</label>
+                    <input type="text" id="cfg-apiKey" class="input-field" placeholder="AIzaSy..." style="margin-bottom: 0;">
+                </div>
+                <div class="config-input">
+                    <label>Project ID</label>
+                    <input type="text" id="cfg-projectId" class="input-field" placeholder="my-vocab-app" style="margin-bottom: 0;">
+                </div>
+                <div class="config-input">
+                    <label>Database URL</label>
+                    <input type="text" id="cfg-databaseURL" class="input-field" placeholder="https://my-vocab-app-default-rtdb.firebaseio.com" style="margin-bottom: 0;">
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="saveFirebaseConfig()">💾 Lưu & Kết nối</button>
+                <button class="btn btn-secondary" onclick="useLocalStorage()">📱 Dùng Local Storage</button>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="upload-section" class="card hidden">
+            <div class="card-title">
+                <span>✨ Tạo Bộ Từ Mới</span>
+                <button class="btn btn-secondary" onclick="hideUpload()">✕ Đóng</button>
+            </div>
             
-            async list(prefix, shared = false) {
-                if (this.isCloudAvailable) {
-                    try {
-                        return await window.storage.list(prefix, shared);
-                    } catch (error) {
-                        console.log('Cloud storage not available, using localStorage');
-                        this.isCloudAvailable = false;
-                    }
-                }
+            <input type="text" id="set-name" class="input-field" placeholder="Tên bộ từ (VD: TOEIC 600, IELTS...)">
+            
+            <div class="upload-grid">
+                <div class="upload-zone" id="excel-zone" onclick="document.getElementById('excel-input').click()">
+                    <div class="upload-icon">📄</div>
+                    <div style="font-weight: 600; color: #333;">File Excel</div>
+                    <div id="excel-name" style="color: #667eea; margin-top: 8px; font-size: 0.9rem;">Chọn file .xlsx</div>
+                    <input type="file" id="excel-input" accept=".xlsx,.xls" style="display: none;" onchange="handleExcelSelect(this)">
+                </div>
                 
-                // Fallback to localStorage
-                const keys = [];
+                <div class="upload-zone" id="audio-zone" onclick="document.getElementById('audio-input').click()">
+                    <div class="upload-icon">🔊</div>
+                    <div style="font-weight: 600; color: #333;">File Audio</div>
+                    <div id="audio-name" style="color: #667eea; margin-top: 8px; font-size: 0.9rem;">Chọn files .wav/.mp3</div>
+                    <input type="file" id="audio-input" accept=".wav,.mp3" multiple style="display: none;" onchange="handleAudioSelect(this)">
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="createVocabSet()">
+                🚀 Tạo Bộ Từ
+            </button>
+        </div>
+
+        <!-- Vocab Sets List -->
+        <div id="sets-section" class="card hidden">
+            <div class="card-title">
+                <span>📖 Bộ Từ Của Bạn</span>
+                <button class="btn btn-primary" onclick="showUpload()">➕ Thêm Mới</button>
+            </div>
+            <div id="vocab-sets-list" class="vocab-sets-grid"></div>
+        </div>
+
+        <!-- Flashcard Section -->
+        <div id="flashcard-section" class="hidden">
+            <div class="flashcard-container">
+                <div id="flashcard" class="flashcard" onclick="flipCard()">
+                    <div class="flashcard-face flashcard-front">
+                        <div id="fc-english" class="word-english">Hello</div>
+                        <div id="fc-pos" class="word-pos">(noun)</div>
+                        <div id="fc-pronunciation" class="word-pronunciation">/həˈloʊ/</div>
+                        <div class="flip-hint">👆 Nhấn để xem nghĩa</div>
+                    </div>
+                    <div class="flashcard-face flashcard-back">
+                        <div id="fc-english-back" class="word-english">Hello</div>
+                        <div id="fc-pos-back" class="word-pos">(noun)</div>
+                        <div id="fc-pronunciation-back" class="word-pronunciation">/həˈloʊ/</div>
+                        <div id="fc-vietnamese" class="word-vietnamese">Xin chào</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="controls">
+                    <button class="btn btn-secondary" id="btn-prev" onclick="prevWord()">
+                        ◀ Trước
+                    </button>
+                    
+                    <div class="controls-center">
+                        <div id="progress-badge" class="progress-badge">1 / 10</div>
+                        <button class="btn btn-audio" onclick="playAudio()">
+                            🔊 Phát Âm
+                        </button>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="btn-next" onclick="nextWord()">
+                        Sau ▶
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="card hidden">
+            <div class="empty-state">
+                <div class="empty-icon">📚</div>
+                <div class="empty-title">Chưa Có Bộ Từ Nào</div>
+                <div class="empty-desc">Hãy tạo bộ từ đầu tiên để bắt đầu hành trình học tiếng Anh!</div>
+                <button class="btn btn-primary" onclick="showUpload()">✨ Bắt Đầu Ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script>
+        // ==================== GLOBAL STATE ====================
+        let db = null;
+        let vocabSets = [];
+        let activeSetId = null;
+        let currentIndex = 0;
+        let isFlipped = false;
+        let excelFile = null;
+        let audioFiles = [];
+        let useFirebase = false;
+        let audioElement = new Audio();
+
+        // ==================== FIREBASE SETUP ====================
+        function initFirebase(config) {
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(config);
+                }
+                db = firebase.database();
+                useFirebase = true;
+                updateStorageStatus('connected', '☁️ Firebase Cloud - Đồng bộ mọi thiết bị');
+                return true;
+            } catch (error) {
+                console.error('Firebase init error:', error);
+                return false;
+            }
+        }
+
+        function saveFirebaseConfig() {
+            const config = {
+                apiKey: document.getElementById('cfg-apiKey').value.trim(),
+                projectId: document.getElementById('cfg-projectId').value.trim(),
+                databaseURL: document.getElementById('cfg-databaseURL').value.trim()
+            };
+
+            if (!config.apiKey || !config.projectId || !config.databaseURL) {
+                showToast('Vui lòng điền đầy đủ thông tin!', 'error');
+                return;
+            }
+
+            if (initFirebase(config)) {
+                localStorage.setItem('firebaseConfig', JSON.stringify(config));
+                document.getElementById('config-section').classList.add('hidden');
+                loadVocabSets();
+                showToast('Kết nối Firebase thành công!', 'success');
+            } else {
+                showToast('Lỗi kết nối Firebase!', 'error');
+            }
+        }
+
+        function useLocalStorage() {
+            useFirebase = false;
+            localStorage.setItem('storageMode', 'local');
+            document.getElementById('config-section').classList.add('hidden');
+            updateStorageStatus('connected', '💾 Local Storage - Chỉ thiết bị này');
+            loadVocabSets();
+        }
+
+        // ==================== STORAGE FUNCTIONS ====================
+        async function saveToStorage(key, data) {
+            if (useFirebase && db) {
+                try {
+                    await db.ref('vocabSets/' + key).set(data);
+                    return true;
+                } catch (error) {
+                    console.error('Firebase save error:', error);
+                    showToast('Lỗi lưu dữ liệu!', 'error');
+                    return false;
+                }
+            } else {
+                try {
+                    localStorage.setItem('vocab_' + key, JSON.stringify(data));
+                    return true;
+                } catch (error) {
+                    console.error('LocalStorage save error:', error);
+                    showToast('Lỗi lưu dữ liệu!', 'error');
+                    return false;
+                }
+            }
+        }
+
+        async function deleteFromStorage(key) {
+            if (useFirebase && db) {
+                try {
+                    await db.ref('vocabSets/' + key).remove();
+                    return true;
+                } catch (error) {
+                    console.error('Firebase delete error:', error);
+                    return false;
+                }
+            } else {
+                localStorage.removeItem('vocab_' + key);
+                return true;
+            }
+        }
+
+        async function loadVocabSets() {
+            updateStorageStatus('syncing', '🔄 Đang tải dữ liệu...');
+            
+            if (useFirebase && db) {
+                try {
+                    const snapshot = await db.ref('vocabSets').once('value');
+                    const data = snapshot.val();
+                    vocabSets = data ? Object.values(data).sort((a, b) => b.id - a.id) : [];
+                    updateStorageStatus('connected', '☁️ Firebase Cloud - Đồng bộ mọi thiết bị');
+                } catch (error) {
+                    console.error('Firebase load error:', error);
+                    vocabSets = [];
+                    updateStorageStatus('disconnected', '❌ Lỗi kết nối Firebase');
+                }
+            } else {
+                vocabSets = [];
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
-                    if (key.startsWith(prefix)) {
-                        keys.push(key);
+                    if (key.startsWith('vocab_')) {
+                        try {
+                            const data = JSON.parse(localStorage.getItem(key));
+                            vocabSets.push(data);
+                        } catch (e) {}
                     }
                 }
-                return { keys };
-            },
-            
-            async get(key, shared = false) {
-                if (this.isCloudAvailable) {
-                    try {
-                        return await window.storage.get(key, shared);
-                    } catch (error) {
-                        this.isCloudAvailable = false;
-                    }
-                }
-                
-                // Fallback to localStorage
-                const value = localStorage.getItem(key);
-                return value ? { key, value } : null;
-            },
-            
-            async set(key, value, shared = false) {
-                if (this.isCloudAvailable) {
-                    try {
-                        return await window.storage.set(key, value, shared);
-                    } catch (error) {
-                        this.isCloudAvailable = false;
-                    }
-                }
-                
-                // Fallback to localStorage
-                localStorage.setItem(key, value);
-                return { key, value };
-            },
-            
-            async delete(key, shared = false) {
-                if (this.isCloudAvailable) {
-                    try {
-                        return await window.storage.delete(key, shared);
-                    } catch (error) {
-                        this.isCloudAvailable = false;
-                    }
-                }
-                
-                // Fallback to localStorage
-                localStorage.removeItem(key);
-                return { key, deleted: true };
-            },
-            
-            getStorageType() {
-                return this.isCloudAvailable ? 'Cloud Storage' : 'Local Storage';
+                vocabSets.sort((a, b) => b.id - a.id);
+                updateStorageStatus('connected', '💾 Local Storage - Chỉ thiết bị này');
             }
-        };
-
-        // Lucide Icons as SVG components
-        const BookOpen = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-        );
-
-        const Upload = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-        );
-
-        const Plus = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-        );
-
-        const Trash2 = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-        );
-
-        const Volume2 = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            </svg>
-        );
-
-        const ChevronLeft = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-        );
-
-        const ChevronRight = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-        );
-
-        const Sparkles = ({ className }) => (
-            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-            </svg>
-        );
-
-        const VocabApp = () => {
-            const [vocabSets, setVocabSets] = useState([]);
-            const [activeSetId, setActiveSetId] = useState(null);
-            const [currentIndex, setCurrentIndex] = useState(0);
-            const [isFlipped, setIsFlipped] = useState(false);
-            const [showUpload, setShowUpload] = useState(false);
-            const [loading, setLoading] = useState(true);
-            const [syncing, setSyncing] = useState(false);
-            const [storageType, setStorageType] = useState('');
             
-            const [setName, setSetName] = useState('');
-            const [excelFile, setExcelFile] = useState(null);
-            const [audioFiles, setAudioFiles] = useState([]);
+            renderVocabSets();
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        // ==================== UI FUNCTIONS ====================
+        function updateStorageStatus(status, text) {
+            const badge = document.getElementById('storage-status');
+            const dot = badge.querySelector('.dot');
+            const span = badge.querySelector('span:last-child');
             
-            const audioRef = useRef(new Audio());
+            badge.className = 'storage-badge ' + status;
+            dot.className = 'dot ' + status;
+            span.textContent = text;
+        }
 
-            useEffect(() => {
-                loadFromStorage();
-                setStorageType(StorageAdapter.getStorageType());
-            }, []);
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
 
-            const loadFromStorage = async () => {
-                setLoading(true);
-                try {
-                    const result = await StorageAdapter.list('vocabset:', true);
-                    if (result && result.keys) {
-                        const sets = [];
-                        for (const key of result.keys) {
-                            try {
-                                const data = await StorageAdapter.get(key, true);
-                                if (data && data.value) {
-                                    const set = JSON.parse(data.value);
-                                    sets.push(set);
-                                }
-                            } catch (err) {
-                                console.log('Key not found:', key);
-                            }
+        function showUpload() {
+            document.getElementById('upload-section').classList.remove('hidden');
+            document.getElementById('flashcard-section').classList.add('hidden');
+        }
+
+        function hideUpload() {
+            document.getElementById('upload-section').classList.add('hidden');
+            document.getElementById('set-name').value = '';
+            document.getElementById('excel-name').textContent = 'Chọn file .xlsx';
+            document.getElementById('audio-name').textContent = 'Chọn files .wav/.mp3';
+            document.getElementById('excel-zone').classList.remove('has-file');
+            document.getElementById('audio-zone').classList.remove('has-file');
+            excelFile = null;
+            audioFiles = [];
+            
+            if (activeSetId) {
+                document.getElementById('flashcard-section').classList.remove('hidden');
+            }
+        }
+
+        function renderVocabSets() {
+            const container = document.getElementById('vocab-sets-list');
+            const setsSection = document.getElementById('sets-section');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (vocabSets.length === 0) {
+                setsSection.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            setsSection.classList.remove('hidden');
+            
+            container.innerHTML = vocabSets.map(set => `
+                <div class="vocab-set-card ${set.id === activeSetId ? 'active' : ''}" onclick="selectSet(${set.id})">
+                    <div class="vocab-set-header">
+                        <div class="vocab-set-name">${set.name}</div>
+                        <button class="btn btn-danger" onclick="event.stopPropagation(); deleteSet(${set.id})">🗑️</button>
+                    </div>
+                    <div class="vocab-set-count">${set.words.length} từ vựng</div>
+                </div>
+            `).join('');
+        }
+
+        // ==================== VOCAB SET FUNCTIONS ====================
+        function handleExcelSelect(input) {
+            if (input.files[0]) {
+                excelFile = input.files[0];
+                document.getElementById('excel-name').textContent = excelFile.name;
+                document.getElementById('excel-zone').classList.add('has-file');
+                
+                if (!document.getElementById('set-name').value) {
+                    document.getElementById('set-name').value = excelFile.name.replace(/\.(xlsx|xls)$/, '');
+                }
+            }
+        }
+
+        function handleAudioSelect(input) {
+            if (input.files.length > 0) {
+                audioFiles = Array.from(input.files);
+                document.getElementById('audio-name').textContent = `${audioFiles.length} files đã chọn`;
+                document.getElementById('audio-zone').classList.add('has-file');
+            }
+        }
+
+        async function createVocabSet() {
+            const setName = document.getElementById('set-name').value.trim();
+            
+            if (!setName || !excelFile || audioFiles.length === 0) {
+                showToast('Vui lòng điền đầy đủ thông tin!', 'error');
+                return;
+            }
+
+            updateStorageStatus('syncing', '🔄 Đang tạo bộ từ...');
+
+            try {
+                const data = await readExcelFile(excelFile);
+                const words = [];
+
+                for (let i = 1; i < data.length; i++) {
+                    const row = data[i];
+                    if (row[0]) {
+                        const audioFileName = `tu_${String(i).padStart(3, '0')}.wav`;
+                        const audioFile = audioFiles.find(f => 
+                            f.name === audioFileName || 
+                            f.name === audioFileName.replace('.wav', '.mp3') ||
+                            f.name === `tu_${String(i).padStart(3, '0')}.mp3`
+                        );
+                        
+                        let audioData = null;
+                        if (audioFile) {
+                            audioData = await readFileAsDataURL(audioFile);
                         }
-                        setVocabSets(sets.sort((a, b) => b.id - a.id));
-                    }
-                } catch (error) {
-                    console.log('Loading from storage...');
-                }
-                setLoading(false);
-            };
 
-            const saveSetToStorage = async (set) => {
-                setSyncing(true);
-                try {
-                    await StorageAdapter.set(`vocabset:${set.id}`, JSON.stringify(set), true);
-                } catch (error) {
-                    alert('Lỗi khi lưu: ' + error.message);
-                }
-                setSyncing(false);
-            };
-
-            const deleteSetFromStorage = async (setId) => {
-                setSyncing(true);
-                try {
-                    await StorageAdapter.delete(`vocabset:${setId}`, true);
-                } catch (error) {
-                    console.error('Error deleting:', error);
-                }
-                setSyncing(false);
-            };
-
-            const handleExcelChange = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    setExcelFile(file);
-                    if (!setName) {
-                        setSetName(file.name.replace(/\.(xlsx|xls)$/, ''));
+                        words.push({
+                            id: i,
+                            english: row[1] || '',
+                            pos: row[2] || '',
+                            pronunciation: row[3] || '',
+                            vietnamese: row[4] || '',
+                            audioData: audioData
+                        });
                     }
                 }
-            };
 
-            const handleAudioChange = (e) => {
-                setAudioFiles(Array.from(e.target.files));
-            };
+                const newSet = {
+                    id: Date.now(),
+                    name: setName,
+                    words: words,
+                    createdAt: new Date().toISOString()
+                };
 
-            const createVocabSet = async () => {
-                if (!setName.trim() || !excelFile || audioFiles.length === 0) {
-                    alert('Vui lòng điền đầy đủ thông tin!');
-                    return;
+                const saved = await saveToStorage(newSet.id, newSet);
+                
+                if (saved) {
+                    vocabSets.unshift(newSet);
+                    renderVocabSets();
+                    selectSet(newSet.id);
+                    hideUpload();
+                    showToast('Tạo bộ từ thành công!', 'success');
                 }
+            } catch (error) {
+                console.error('Create error:', error);
+                showToast('Có lỗi xảy ra: ' + error.message, 'error');
+                updateStorageStatus('connected', useFirebase ? '☁️ Firebase Cloud' : '💾 Local Storage');
+            }
+        }
 
-                try {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                         const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-                        const words = [];
-                        for (let i = 1; i < jsonData.length; i++) {
-                            const row = jsonData[i];
-                            if (row[0]) {
-                                const audioFileName = `tu_${String(i).padStart(3, '0')}.wav`;
-                                const audioFile = audioFiles.find(f => 
-                                    f.name === audioFileName || f.name === audioFileName.replace('.wav', '.mp3')
-                                );
-                                
-                                let audioDataUrl = null;
-                                if (audioFile) {
-                                    const audioReader = new FileReader();
-                                    audioDataUrl = await new Promise((resolve) => {
-                                        audioReader.onload = (e) => resolve(e.target.result);
-                                        audioReader.readAsDataURL(audioFile);
-                                    });
-                                }
-
-                                words.push({
-                                    id: i,
-                                    english: row[1] || '',
-                                    pos: row[2] || '',
-                                    pronunciation: row[3] || '',
-                                    vietnamese: row[4] || '',
-                                    audioData: audioDataUrl
-                                });
-                            }
-                        }
-
-                        const newSet = {
-                            id: Date.now(),
-                            name: setName.trim(),
-                            words: words,
-                            createdAt: new Date().toISOString()
-                        };
-
-                        await saveSetToStorage(newSet);
-                        setVocabSets(prev => [newSet, ...prev]);
-                        setActiveSetId(newSet.id);
-                        setCurrentIndex(0);
-                        
-                        setSetName('');
-                        setExcelFile(null);
-                        setAudioFiles([]);
-                        setShowUpload(false);
-                    };
-                    reader.readAsArrayBuffer(excelFile);
-                } catch (error) {
-                    alert('Có lỗi xảy ra: ' + error.message);
-                }
-            };
-
-            const deleteSet = async (setId) => {
-                if (confirm('Bạn có chắc muốn xóa bộ từ này?')) {
-                    await deleteSetFromStorage(setId);
-                    setVocabSets(prev => prev.filter(s => s.id !== setId));
-                    if (activeSetId === setId) {
-                        setActiveSetId(null);
+                        resolve(jsonData);
+                    } catch (error) {
+                        reject(error);
                     }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function deleteSet(setId) {
+            if (!confirm('Bạn có chắc muốn xóa bộ từ này?')) return;
+            
+            updateStorageStatus('syncing', '🔄 Đang xóa...');
+            
+            const deleted = await deleteFromStorage(setId);
+            if (deleted) {
+                vocabSets = vocabSets.filter(s => s.id !== setId);
+                if (activeSetId === setId) {
+                    activeSetId = null;
+                    document.getElementById('flashcard-section').classList.add('hidden');
                 }
-            };
-
-            const selectSet = (setId) => {
-                setActiveSetId(setId);
-                setCurrentIndex(0);
-                setIsFlipped(false);
-                setShowUpload(false);
-            };
-
-            const prevWord = () => {
-                if (currentIndex > 0) {
-                    setCurrentIndex(currentIndex - 1);
-                    setIsFlipped(false);
-                }
-            };
-
-            const nextWord = () => {
-                const activeSet = vocabSets.find(s => s.id === activeSetId);
-                if (activeSet && currentIndex < activeSet.words.length - 1) {
-                    setCurrentIndex(currentIndex + 1);
-                    setIsFlipped(false);
-                }
-            };
-
-            const playAudio = () => {
-                const activeSet = vocabSets.find(s => s.id === activeSetId);
-                const word = activeSet?.words[currentIndex];
-                
-                if (word?.audioData) {
-                    audioRef.current.src = word.audioData;
-                    audioRef.current.play();
-                } else {
-                    alert('Không có file âm thanh!');
-                }
-            };
-
-            const activeSet = vocabSets.find(s => s.id === activeSetId);
-            const currentWord = activeSet?.words[currentIndex];
-
-            if (loading) {
-                return (
-                    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 flex items-center justify-center">
-                        <div className="text-white text-2xl font-semibold animate-pulse">
-                            Đang tải dữ liệu...
-                        </div>
-                    </div>
-                );
+                renderVocabSets();
+                showToast('Đã xóa bộ từ!', 'success');
             }
+            
+            updateStorageStatus('connected', useFirebase ? '☁️ Firebase Cloud - Đồng bộ mọi thiết bị' : '💾 Local Storage - Chỉ thiết bị này');
+        }
 
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 p-4 md:p-8">
-                    {/* Header */}
-                    <div className="text-center text-white mb-12 animate-fade-in">
-                        <div className="flex items-center justify-center gap-4 mb-4">
-                            <BookOpen className="w-12 h-12 animate-bounce" />
-                            <h1 className="text-5xl font-bold">Học Từ Vựng</h1>
-                        </div>
-                        <p className="text-xl opacity-95">Phương pháp học hiệu quả với Flashcard</p>
-                        <div className="mt-3 text-sm">
-                            {syncing && (
-                                <span className="bg-white/20 inline-block px-4 py-1 rounded-full mr-2">
-                                    💾 Đang lưu...
-                                </span>
-                            )}
-                            <span className="bg-white/20 inline-block px-4 py-1 rounded-full">
-                                {storageType === 'Cloud Storage' ? '☁️ Cloud Storage (Đồng bộ mọi thiết bị)' : '💾 Local Storage (Chỉ thiết bị này)'}
-                            </span>
-                        </div>
-                    </div>
+        function selectSet(setId) {
+            activeSetId = setId;
+            currentIndex = 0;
+            isFlipped = false;
+            
+            renderVocabSets();
+            updateFlashcard();
+            
+            document.getElementById('flashcard-section').classList.remove('hidden');
+            document.getElementById('upload-section').classList.add('hidden');
+        }
 
-                    <div className="max-w-6xl mx-auto">
-                        {showUpload && (
-                            <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-8 mb-6 shadow-2xl animate-slide-up">
-                                <div className="text-center mb-8">
-                                    <h2 className="text-3xl font-bold text-gray-800 mb-2">✨ Tạo Bộ Từ Mới</h2>
-                                    <p className="text-gray-600">Upload file Excel và audio để bắt đầu</p>
-                                </div>
+        // ==================== FLASHCARD FUNCTIONS ====================
+        function updateFlashcard() {
+            const set = vocabSets.find(s => s.id === activeSetId);
+            if (!set || !set.words.length) return;
+            
+            const word = set.words[currentIndex];
+            
+            document.getElementById('fc-english').textContent = word.english;
+            document.getElementById('fc-english-back').textContent = word.english;
+            document.getElementById('fc-pos').textContent = word.pos ? `(${word.pos})` : '';
+            document.getElementById('fc-pos-back').textContent = word.pos ? `(${word.pos})` : '';
+            document.getElementById('fc-pronunciation').textContent = word.pronunciation || '';
+            document.getElementById('fc-pronunciation-back').textContent = word.pronunciation || '';
+            document.getElementById('fc-vietnamese').textContent = word.vietnamese;
+            
+            document.getElementById('progress-badge').textContent = `${currentIndex + 1} / ${set.words.length}`;
+            
+            document.getElementById('btn-prev').disabled = currentIndex === 0;
+            document.getElementById('btn-next').disabled = currentIndex === set.words.length - 1;
+            
+            // Reset flip
+            document.getElementById('flashcard').classList.remove('flipped');
+            isFlipped = false;
+        }
 
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-gray-700 font-semibold mb-2">📝 Tên bộ từ</label>
-                                        <input
-                                            type="text"
-                                            value={setName}
-                                            onChange={(e) => setSetName(e.target.value)}
-                                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none transition-all"
-                                            placeholder="Ví dụ: TOEIC 600, IELTS Vocabulary..."
-                                        />
-                                    </div>
+        function flipCard() {
+            isFlipped = !isFlipped;
+            document.getElementById('flashcard').classList.toggle('flipped', isFlipped);
+        }
 
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        <div className="border-3 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-500 transition-all cursor-pointer">
-                                            <input
-                                                type="file"
-                                                accept=".xlsx,.xls"
-                                                onChange={handleExcelChange}
-                                                className="hidden"
-                                                id="excel-upload"
-                                            />
-                                            <label htmlFor="excel-upload" className="cursor-pointer block">
-                                                <Upload className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                                                <div className="font-semibold text-gray-700">File Excel</div>
-                                                <div className="text-sm text-purple-600 mt-2">
-                                                    {excelFile ? excelFile.name : 'Chọn file Excel'}
-                                                </div>
-                                            </label>
-                                        </div>
+        function prevWord() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateFlashcard();
+            }
+        }
 
-                                        <div className="border-3 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-500 transition-all cursor-pointer">
-                                            <input
-                                                type="file"
-                                                accept=".wav,.mp3"
-                                                multiple
-                                                onChange={handleAudioChange}
-                                                className="hidden"
-                                                id="audio-upload"
-                                            />
-                                            <label htmlFor="audio-upload" className="cursor-pointer block">
-                                                <Volume2 className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                                                <div className="font-semibold text-gray-700">File Audio</div>
-                                                <div className="text-sm text-purple-600 mt-2">
-                                                    {audioFiles.length > 0 ? `${audioFiles.length} files` : 'Chọn file audio'}
-                                                </div>
-                                            </label>
-                                        </div>
-                                    </div>
+        function nextWord() {
+            const set = vocabSets.find(s => s.id === activeSetId);
+            if (set && currentIndex < set.words.length - 1) {
+                currentIndex++;
+                updateFlashcard();
+            }
+        }
 
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={createVocabSet}
-                                            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-semibold hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Sparkles className="w-5 h-5" />
-                                            Tạo Bộ Từ Ngay
-                                        </button>
-                                        <button
-                                            onClick={() => setShowUpload(false)}
-                                            className="px-6 py-4 border-2 border-gray-300 rounded-xl hover:bg-gray-100 transition-all"
-                                        >
-                                            Hủy
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+        function playAudio() {
+            const set = vocabSets.find(s => s.id === activeSetId);
+            const word = set?.words[currentIndex];
+            
+            if (word?.audioData) {
+                audioElement.src = word.audioData;
+                audioElement.play().catch(e => {
+                    showToast('Không thể phát âm thanh!', 'error');
+                });
+            } else {
+                showToast('Không có file âm thanh!', 'error');
+            }
+        }
 
-                        {vocabSets.length > 0 && !showUpload && (
-                            <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-8 mb-6 shadow-2xl">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-800">📖 Bộ Từ Của Bạn</h2>
-                                    <button
-                                        onClick={() => setShowUpload(true)}
-                                        className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all"
-                                    >
-                                        <Plus className="w-5 h-5" />
-                                        Thêm Bộ Mới
-                                    </button>
-                                </div>
-                                
-                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {vocabSets.map(set => (
-                                        <div
-                                            key={set.id}
-                                            onClick={() => selectSet(set.id)}
-                                            className={`p-6 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg ${
-                                                set.id === activeSetId
-                                                    ? 'border-purple-500 bg-purple-50'
-                                                    : 'border-gray-200 hover:border-purple-300'
-                                            }`}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-bold text-lg text-gray-800">{set.name}</h3>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        deleteSet(set.id);
-                                                    }}
-                                                    className="text-red-500 hover:bg-red-100 p-2 rounded-lg transition-all"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                            <p className="text-gray-600">{set.words.length} từ vựng</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+        // ==================== KEYBOARD NAVIGATION ====================
+        document.addEventListener('keydown', (e) => {
+            if (!activeSetId) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    prevWord();
+                    break;
+                case 'ArrowRight':
+                    nextWord();
+                    break;
+                case ' ':
+                case 'Enter':
+                    e.preventDefault();
+                    flipCard();
+                    break;
+                case 'p':
+                case 'P':
+                    playAudio();
+                    break;
+            }
+        });
 
-                        {activeSetId && currentWord && (
-                            <div className="space-y-6 animate-slide-up">
-                                <div className="perspective-1000">
-                                    <div
-                                        onClick={() => setIsFlipped(!isFlipped)}
-                                        className={`relative w-full h-96 cursor-pointer transition-transform duration-500 transform-style-3d ${
-                                            isFlipped ? 'rotate-y-180' : ''
-                                        }`}
-                                    >
-                                        <div className="absolute w-full h-full backface-hidden bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-8 text-white">
-                                            <div className="text-6xl font-bold mb-4">{currentWord.english}</div>
-                                            {currentWord.pos && (
-                                                <div className="text-xl opacity-90 mb-2">{currentWord.pos}</div>
-                                            )}
-                                            {currentWord.pronunciation && (
-                                                <div className="text-lg italic opacity-85 mb-6">{currentWord.pronunciation}</div>
-                                            )}
-                                            <div className="text-lg opacity-90 animate-pulse">👆 Nhấn để xem nghĩa</div>
-                                        </div>
-
-                                        <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-8 text-white">
-                                            <div className="text-4xl font-bold mb-4">{currentWord.english}</div>
-                                            {currentWord.pos && (
-                                                <div className="text-xl opacity-90 mb-2">{currentWord.pos}</div>
-                                            )}
-                                            {currentWord.pronunciation && (
-                                                <div className="text-lg italic opacity-85 mb-6">{currentWord.pronunciation}</div>
-                                            )}
-                                            <div className="text-3xl font-semibold mb-6">{currentWord.vietnamese}</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-6 shadow-xl">
-                                    <div className="flex items-center justify-between">
-                                        <button
-                                            onClick={prevWord}
-                                            disabled={currentIndex === 0}
-                                            className="flex items-center gap-2 px-6 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            <ChevronLeft className="w-5 h-5" />
-                                            <span className="font-semibold hidden sm:inline">Trước</span>
-                                        </button>
-
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="bg-purple-100 text-purple-700 font-bold px-6 py-2 rounded-full text-lg">
-                                                {currentIndex + 1} / {activeSet.words.length}
-                                            </div>
-                                            <button
-                                                onClick={playAudio}
-                                                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:shadow-lg transition-all"
-                                            >
-                                                <Volume2 className="w-5 h-5" />
-                                                <span className="font-semibold">Phát Âm</span>
-                                            </button>
-                                        </div>
-
-                                        <button
-                                            onClick={nextWord}
-                                            disabled={currentIndex === activeSet.words.length - 1}
-                                            className="flex items-center gap-2 px-6 py-3 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            <span className="font-semibold hidden sm:inline">Sau</span>
-                                            <ChevronRight className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {vocabSets.length === 0 && !showUpload && (
-                            <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-12 text-center shadow-2xl animate-fade-in">
-                                <BookOpen className="w-24 h-24 mx-auto mb-6 text-purple-600 animate-bounce" />
-                                <h3 className="text-3xl font-bold text-gray-800 mb-4">Chưa Có Bộ Từ Nào</h3>
-                                <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
-                                    Hãy tạo bộ từ đầu tiên của bạn để bắt đầu hành trình học tiếng Anh!
-                                </p>
-                                <button
-                                    onClick={() => setShowUpload(true)}
-                                    className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:shadow-xl transition-all"
-                                >
-                                    <Sparkles className="w-6 h-6" />
-                                    Bắt Đầu Ngay
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
+        // ==================== INITIALIZATION ====================
+        window.onload = function() {
+            const savedConfig = localStorage.getItem('firebaseConfig');
+            const storageMode = localStorage.getItem('storageMode');
+            
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    if (initFirebase(config)) {
+                        loadVocabSets();
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Config parse error:', e);
+                }
+            }
+            
+            if (storageMode === 'local') {
+                useFirebase = false;
+                updateStorageStatus('connected', '💾 Local Storage - Chỉ thiết bị này');
+                loadVocabSets();
+                return;
+            }
+            
+            // Show config section
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('config-section').classList.remove('hidden');
+            updateStorageStatus('disconnected', '⚙️ Cần cấu hình Firebase');
         };
-
-        ReactDOM.render(<VocabApp />, document.getElementById('root'));
     </script>
 </body>
 </html>
